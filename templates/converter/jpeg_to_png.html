@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JPEG to PNG Converter</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <style>
+        .drag-drop-box {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+        }
+
+        .drag-drop-box input {
+            display: none;
+        }
+
+        .progress-container {
+            display: none;
+        }
+
+        #preview-container {
+            position: relative;
+        }
+
+        #preview img {
+            max-width: 100%;
+            height: auto;
+            transition: filter 0.5s ease; /* Add transition for a smooth effect */
+            filter: blur(8px); /* Initial blur effect */
+        }
+
+        #preview:not(.blurred) img {
+            filter: none; /* Remove blur effect when not blurred */
+        }
+
+        #downloadLink {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background-color 0.3s ease;
+        }
+
+        #downloadLink:hover {
+            background-color: #218838;
+        }
+
+        #convertAnotherBtn {
+            display: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="text-center">JPEG to PNG Converter</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="conversionForm" method="post" action="{% url 'jpeg_to_png' %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="form-group drag-drop-box" id="dragDropBox" ondrop="dropHandler(event)" ondragover="dragOverHandler(event)" onclick="document.getElementById('fileInput').click()">
+                                <input type="file" class="form-control" id="fileInput" name="image" accept="image/jpeg" onchange="displayImage(this)" style="display:none;">
+                                <p>Drag & Drop or Click to Select Image</p>
+                            </div>
+                            <div id="preview-container" class="text-center">
+                                <div id="preview"></div>
+                                <a id="downloadLink" href="#" class="btn btn-success download-btn">Download Converted Image</a>
+                                <button id="convertAnotherBtn" type="button" class="btn btn-primary btn-block" onclick="convertAnotherImage()">Convert Another Image</button>
+                            </div>
+                            <div class="progress-container mt-3">
+                                <div class="progress">
+                                    <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                            <br>
+                            <button id="exploreFilesBtn" type="button" class="btn btn-secondary btn-block" onclick="document.getElementById('fileInput').click()">Explore Files</button>
+                            <button id="convertBtn" type="button" class="btn btn-primary btn-block" onclick="convertImage()">Convert</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+    <script>
+        function displayImage(input) {
+            var preview = document.getElementById('preview');
+            preview.innerHTML = '';
+
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+
+                reader.onload = function (e) {
+                    var img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.classList.add('img-fluid');
+                    preview.appendChild(img);
+                    // Remove the blurred class to show the image without blur
+                    preview.classList.remove('blurred');
+                }
+
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function dragOverHandler(event) {
+            event.preventDefault();
+            event.target.classList.add('border-primary');
+        }
+
+        function dropHandler(event) {
+            event.preventDefault();
+            event.target.classList.remove('border-primary');
+
+            var files = event.dataTransfer.files;
+            document.getElementById('fileInput').files = files;
+
+            displayImage(document.getElementById('fileInput'));
+        }
+
+        function convertImage() {
+            var form = document.getElementById('conversionForm');
+            var progressBar = document.querySelector('.progress-bar');
+            var progressContainer = document.querySelector('.progress-container');
+            var previewContainer = document.getElementById('preview-container');
+            var preview = document.getElementById('preview');
+            var downloadButton = document.getElementById('downloadLink');
+            var convertAnotherBtn = document.getElementById('convertAnotherBtn');
+            var exploreFilesBtn = document.getElementById('exploreFilesBtn');
+            var convertBtn = document.getElementById('convertBtn');
+            var dragDropBox = document.getElementById('dragDropBox');
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', form.action, true);
+
+            xhr.upload.onprogress = function (e) {
+                if (e.lengthComputable) {
+                    var percent = (e.loaded / e.total) * 100;
+                    progressBar.style.width = percent + '%';
+                    progressBar.setAttribute('aria-valuenow', percent);
+                }
+            };
+
+            xhr.onload = function () {
+                if (xhr.status === 200) {
+                    progressContainer.style.display = 'none';
+
+                    // Create a blob URL for the response
+                    var blob = new Blob([xhr.response], { type: 'image/png' });
+                    var url = URL.createObjectURL(blob);
+
+                    // Add the blurred class to show the image with blur
+                    preview.classList.add('blurred');
+
+                    // Set the download button attributes
+                    downloadButton.href = url;
+                    downloadButton.download = 'converted_image.png'; // Set the desired file name
+                    downloadButton.style.display = 'block';
+
+                    // Show the "Convert Another Image" button
+                    convertAnotherBtn.style.display = 'block';
+
+                    // Hide the explore files button and convert button
+                    exploreFilesBtn.style.display = 'none';
+                    convertBtn.style.display = 'none';
+
+                    // Hide the drag and drop box
+                    dragDropBox.style.display = 'none';
+                } else {
+                    console.error('Image conversion failed');
+                }
+            };
+
+            xhr.responseType = 'blob';
+            var formData = new FormData(form);
+            xhr.send(formData);
+
+            progressContainer.style.display = 'block';
+        }
+
+        function convertAnotherImage() {
+            // Reset the form and display the drag and drop box
+            var form = document.getElementById('conversionForm');
+            form.reset();
+            document.getElementById('preview').innerHTML = '';
+            document.getElementById('downloadLink').style.display = 'none';
+            document.getElementById('convertAnotherBtn').style.display = 'none';
+            document.getElementById('exploreFilesBtn').style.display = 'block';
+            document.getElementById('convertBtn').style.display = 'block';
+            document.getElementById('dragDropBox').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
