@@ -3,8 +3,6 @@ from django.shortcuts import render
 from PIL import Image
 from django.core.files.base import ContentFile
 import io
-from .models import ConvertedFile
-from django.core.files.storage import FileSystemStorage
 
 
 def jpeg_to_png(request):
